@@ -1,0 +1,1 @@
+g++ -o ThrustEngine.exe ThrustEngine.cpp glad.c -lglfw3
