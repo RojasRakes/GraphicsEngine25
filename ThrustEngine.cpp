@@ -12,11 +12,20 @@
 #include <iostream>
 
 
-	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-	glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-	glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
+//set window height
+int WindowWidth{800};
+int WindowHeight{600};
 
+//center mouse
+bool firstMouse{true};
+float mouseLastX{float(WindowWidth/2)}, mouseLastY{float(WindowHeight/2)};
+//init yaw and pitch
+float yaw{90.0f};
+float pitch{90.0f};
 
 void processInput(GLFWwindow *window);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -25,6 +34,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0,0, width, height);
 }
+
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
+
+void debugInfo(float DYaw,float DPitch);
 
 float vertices[]
 {
@@ -88,6 +101,10 @@ float deltaTime = 0.0f; //Time between current and last frame
 float lastFrame = 0.0f; // Time of last frame
 
 
+
+// init mouse pos to center of screen
+
+
 int main()
 {
 	std::cout << "We are all connected..." << std::endl;
@@ -103,8 +120,6 @@ int main()
 		std::cout << "Success! GLFW Iinitialized Successfully" << std::endl;
 	}
 	
-	int WindowWidth{800};
-	int WindowHeight{600};
 
 	GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, "Thrust Engine", NULL, NULL);
 	if (window == NULL)
@@ -114,17 +129,18 @@ int main()
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
 
-
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); //Capture mouse cursor	
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
 	
-	glViewport(0, 0, 800, 600);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	
+	glViewport(0, 0, WindowWidth, WindowHeight);
+
 
 	//Load Shaders
 	Shader myShader("shaders/shader.vs", "shaders/shader.fs");
@@ -191,7 +207,7 @@ int main()
 	
 	//we want to use perspective projection
 	glm::mat4 projection;
-	projection = glm::perspective(glm::radians(45.0f), 800.0f/ 600.0f, 0.1f, 100.0f);
+	projection = glm::perspective(glm::radians(45.0f), float(WindowWidth)/ float(WindowHeight), 0.1f, 100.0f);
 	
 
 
@@ -200,7 +216,7 @@ int main()
 	//camera
 	
 
-	//glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.3f);
+//	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.3f);
 	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
 
@@ -249,15 +265,52 @@ int main()
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 	
+		debugInfo(yaw, pitch);
 		glfwSwapBuffers(window);
 		glfwPollEvents(); 
+
 
 	}
 	glfwTerminate();
 	return 0;
 }
 
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if (firstMouse)
+	{
+		mouseLastX = xpos;
+		mouseLastY = ypos;	
+		firstMouse = false;
+	}
+	float xOffSet = xpos - mouseLastX;
+	float yOffSet = mouseLastY - ypos;
+	mouseLastX = xpos;
+	mouseLastY = ypos;
+	
+	float sensitivity = 0.1f;
+	xOffSet *= sensitivity;
+	yOffSet *= sensitivity;
+	
+	yaw += xOffSet;
+	pitch +=yOffSet;
 
+	//lock pitch postion to avoid weird camera movements such as the user pitching their head 360 degrees.
+	if(pitch > 89.0f)
+		pitch = 89.0f;
+	if(pitch < -89.0f)
+		pitch = -89.0f;
+	//calculate direction vector using magic
+	//I guess we add values to each section of this 3 length vector, therefore it would look like this (direction.x,direction.y, direction,z)
+	glm::vec3 direction; // init a vector of size 3
+	direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch)); //more trigonomic magic i copied
+	direction.y = sin(glm::radians(pitch));
+	direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	cameraFront = glm::normalize(direction);
+
+
+
+}
 
 void processInput(GLFWwindow *window)
 {
@@ -291,4 +344,10 @@ void processInput(GLFWwindow *window)
 
 
 
+}
+
+void debugInfo(float DYaw, float DPitch)
+{
+	std::cout << "Debug Info" << std::endl;
+	std::cout << "Yaw:" << DYaw << " pitch" << DPitch << std::endl;
 }
